@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "ida-pro": {
+      "command": "python",
+      "args": ["path\\to\\mcp_coordinator.py"]
+    }
+  }
+}
