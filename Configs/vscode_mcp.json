@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "ida-pro": {
+      "command": "python",
+      "args": ["path\\to\\start_with_coordinator.py"]
+    }
+  }
+}
