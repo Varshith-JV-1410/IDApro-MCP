@@ -2,3 +2,10 @@
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md
+
+# Ignore Codacy config
+.codacy/
+
+# Ignore IDA API research/inspector files
+IDA_API_ANALYSIS.md
+ida_api_inspector.py

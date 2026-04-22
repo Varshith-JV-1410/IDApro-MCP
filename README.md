@@ -1,9 +1,9 @@
-# IDA Pro MCP Server - Ultimate Edition
+# IDA Pro MCP Server
 
-> **Multi-instance Model Context Protocol Server for IDA Pro 9.0+**  
-> Advanced architecture supporting parallel analysis of multiple binaries
+> **Model Context Protocol Server for IDA Pro 9.0+**  
+> Connect any MCP-capable AI (Claude, GitHub Copilot, Cursor, etc.) directly to a live IDA Pro session over HTTP.
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![IDA Pro 9.0+](https://img.shields.io/badge/IDA%20Pro-9.0+-green.svg)](https://hex-rays.com/ida-pro/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -12,468 +12,348 @@
 ## 🌟 Features
 
 ### Core Capabilities
-- **Multi-Instance Support**: Analyze multiple binaries simultaneously across separate IDA instances
-- **Unified Coordinator**: Single access point for managing all IDA instances
-- **Auto-Registration**: IDA instances automatically register with the coordinator
-- **Process Isolation**: Each IDA instance runs independently with crash protection
-- **Real-time Synchronization**: Heartbeat monitoring and health checks
+- **Direct HTTP Connection**: MCP clients connect straight to IDA — no proxy, no coordinator required
+- **Remote Access**: Bind to `0.0.0.0` for cross-machine use (VM guest → host, Mac → Windows, etc.)
+- **35 Analysis Tools**: Full coverage from disassembly to binary patching
+- **API Inspector**: Companion plugin (`ida_api_inspector.py`) for live IDA Python API introspection
+- **Companion Inspector**: `ida_api_inspector.py` runs alongside for live IDA Python API exploration
 
-### Analysis Tools (27 Comprehensive Tools)
-- ✅ **Disassembly Extraction**: Get assembly code from functions
-- ✅ **Pseudocode Decompilation**: Hex-Rays integration for C-like code
-- ✅ **Function Analysis**: Comprehensive function information and statistics
-- ✅ **Cross-References**: Track code and data references (XRefs)
-- ✅ **Import/Export Enumeration**: Complete binary interface analysis
-- ✅ **String Extraction**: Find and analyze embedded strings
-- ✅ **Code Manipulation**: Rename functions, set comments, annotations
-- ✅ **Memory Operations**: Read bytes, dwords, qwords, floats, doubles
-- ✅ **Binary Analysis**: Entry points, segments, instruction lengths
-- ✅ **Function Manipulation**: Create/undefine functions dynamically
+### Analysis Tools (35 Tools)
+- ✅ **Disassembly & Decompilation**: Assembly and Hex-Rays pseudocode extraction
+- ✅ **Function Analysis**: Info, statistics, chunks, call graph, basic blocks, switch cases
+- ✅ **Cross-References**: Incoming and outgoing xrefs, callgraph traversal
+- ✅ **Import / Export Enumeration**: Full binary interface analysis
+- ✅ **String Extraction**: Embedded strings with configurable minimum length
+- ✅ **Memory Read/Write**: Bytes, words, dwords, qwords, floats, doubles
+- ✅ **Binary Patching**: Write memory, NOP ranges, assemble instructions, apply patches to file, revert patches
+- ✅ **Search**: Pattern search, immediate value search, name search
+- ✅ **Naming & Comments**: Rename functions, rename local variables, set comments
+- ✅ **Type System**: Manage types, decode instructions, demangle names
+- ✅ **Debugger**: Manage and list breakpoints
+- ✅ **Entropy Analysis**: Calculate section/range entropy
+- ✅ **Local Variables**: List and rename local variables (Hex-Rays)
 
 ## 🏗️ Architecture
 
+### Primary Mode — Direct HTTP (Recommended)
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    MCP Coordinator Server                   │
-│                    (localhost:11337)                        │
-│  • Instance Management  • Tool Routing  • Health Checks     │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-      ┌───────────┼───────────┬───────────────┐
-      │           │           │               │
-┌─────▼────┐ ┌───▼─────┐ ┌──▼──────┐ ┌─────▼────┐
-│ IDA Pro  │ │ IDA Pro │ │ IDA Pro │ │ IDA Pro  │
-│ Instance │ │ Instance│ │ Instance│ │ Instance │
-│ (Port    │ │ (Port   │ │ (Port   │ │ (Port    │
-│  3000)   │ │  3001)  │ │  3002)  │ │  3003)   │
-│          │ │         │ │         │ │          │
-│ malware  │ │ dropper │ │ payload │ │ c2_module│
-│  .exe    │ │ .exe    │ │ .dll    │ │ .sys     │
-└──────────┘ └─────────┘ └─────────┘ └──────────┘
+┌──────────────────────────────────────┐
+│         MCP Client                   │
+│  (Claude / Copilot / Cursor / etc.)  │
+│  URL: http://<IDA_HOST>:7337/mcp     │
+└──────────────────┬───────────────────┘
+                   │  Streamable HTTP (MCP)
+                   ▼
+┌──────────────────────────────────────┐
+│         IDA Pro  (ida_plugin.py)     │
+│         FastMCP  •  port 7337        │
+│         binds 0.0.0.0                │
+│  35 tools running in the IDA session │
+└──────────────────────────────────────┘
 ```
 
-**How it works:**
-1. **Coordinator** runs on port 11337, managing all IDA instances
-2. Each **IDA Pro instance** loads a binary and starts the plugin
-3. Plugin auto-registers with coordinator and gets assigned a unique ID
-4. **MCP clients** communicate with coordinator, which routes requests to appropriate instances
-5. Supports **broadcast operations** across all instances simultaneously
+
 
 ## 📋 Requirements
 
 - **IDA Pro 9.0+** (with IDAPython)
-- **Python 3.8+**
+- **Python 3.10+** (bundled with IDA Pro 9.0)
 - **Operating System**: Windows, Linux, or macOS
 
 ### Python Dependencies
 ```
-mcp
-starlette
+mcp[cli]
 uvicorn
-aiohttp
-requests
-flask
+starlette
+```
+
+Install inside IDA's Python environment:
+```powershell
+# Windows — find IDA's python.exe first
+C:\Path\To\IDA\python\python.exe -m pip install "mcp[cli]" uvicorn starlette
 ```
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### 1. Install the Plugin
 
-#### Windows (PowerShell)
-```powershell
-# Clone or download the repository
-cd ida-mcp
+Copy `ida_plugin.py` to IDA's plugin directory:
 
-# Run automated installation
-.\install.ps1
+| OS | Path |
+|----|------|
+| Windows | `C:\Program Files\IDA Pro 9.0\plugins\` |
+| Linux | `~/idapro-9.0/plugins/` |
+| macOS | `/Applications/IDA Pro 9.0/ida64.app/Contents/plugins/` |
 
-# Optional: Specify IDA path
-.\install.ps1 -IDAPath "C:\Program Files\IDA Pro 9.0"
+Optionally copy `ida_api_inspector.py` to the same directory to also get the API introspection server on port 7338.
+
+### 2. Load a Binary in IDA Pro
+
+Open IDA Pro, load any binary, and wait for auto-analysis to complete.  
+The plugin starts automatically and prints to the IDA Output Window:
+
+```
+[IDA MCP] Running → http://0.0.0.0:7337/mcp
+[IDA MCP] Add to mcp.json: {"url": "http://<HOST>:7337/mcp", "type": "http"}
 ```
 
-#### Linux/macOS (Bash)
-```bash
-# Clone or download the repository
-cd ida-mcp
+### 3. Connect Your MCP Client
 
-# Make scripts executable
-chmod +x install.sh start_coordinator.sh test_installation.sh
-
-# Run automated installation
-./install.sh
-
-# Optional: Specify IDA path
-./install.sh --ida-path "/opt/idapro-9.0"
-```
-
-### 2. Start the Coordinator (Just for testing, skip this if you are not a developer)
-
-#### Windows
-```powershell
-.\start_coordinator.ps1
-```
-
-#### Linux/macOS
-```bash
-./start_coordinator.sh
-```
-
-You should see:
-```
-IDA Pro MCP Coordinator Server
-HTTP API: http://localhost:11337
-Waiting for IDA instances to register...
-```
-
-### 3. Add the following config to mcp client of choice
-
-1. VSCode
-```bash
+#### VS Code (`settings.json` or `.vscode/mcp.json`)
+```json
 {
   "servers": {
     "ida-pro": {
-      "command": "python",
-      "args": ["path\\to\\start_with_coordinator.py"]
+      "url": "http://127.0.0.1:7337/mcp",
+      "type": "http"
     }
   }
 }
 ```
-2. Claude Desktop
-```bash
+
+#### Claude Desktop (`claude_desktop_config.json`)
+```json
 {
   "mcpServers": {
     "ida-pro": {
-      "command": "python",
-      "args": ["path\\to\\start_with_coordinator.py"]
+      "url": "http://127.0.0.1:7337/mcp",
+      "type": "http"
     }
   }
 }
 ```
 
-
-### 4. Load IDA Pro and Start Plugin
-
-1. Open **IDA Pro** and load a binary file
-2. Navigate to: **Edit → Plugins → IDA MCP Plugin**
-3. Plugin will auto-register with coordinator
-4. Confirmation dialog shows instance ID and port
-
-### 5. ChatGPT Connector (Streamable HTTP)
-
-Use the production connector server in `openai_connector_mcp/server.py`.
-
-From the `IDApro-MCP-dev` folder:
-
-```powershell
-python openai_connector_mcp/server.py --transport streamable-http --host 127.0.0.1 --port 8100 --path /mcp --coordinator-url http://127.0.0.1:11337
+#### Remote Machine (IDA on a different host/VM)
+```json
+{
+  "servers": {
+    "ida-pro": {
+      "url": "http://192.168.27.136:7337/mcp",
+      "type": "http"
+    }
+  }
+}
 ```
 
-Behavior:
-
-- Starts/validates coordinator automatically before serving MCP.
-- Looks for `mcp_coordinator.py` next to connector `server.py` first.
-- Falls back to the parent project path for backward compatibility.
-
-Default connector endpoint:
-
-- `http://127.0.0.1:8100/mcp`
-
-Optional tunnel for ChatGPT connectors:
-
-```powershell
-ngrok http 8100
-```
-
-Then use:
-
-- `https://<your-subdomain>.ngrok.app/mcp`
-
+> **Tip**: Sample configs are in the [`Configs/`](Configs/) folder.
 
 ## 📖 Usage Examples
 
-### GitHub Copilot Integration (Recommended)
+### GitHub Copilot / Claude Chat
 
-**The easiest way to use this server is with GitHub Copilot in VS Code!**
-
-Quick example:
 ```
-You: @ida list all IDA instances
-Copilot: Shows your loaded binaries
+Show me the pseudocode for the main function.
 
-You: @ida get pseudocode for main function in ida_1
-Copilot: Displays decompiled C code
+List all imported functions and flag any that are commonly abused by malware.
 
-You: @ida broadcast get_strings and find suspicious URLs
-Copilot: Analyzes strings across all samples
+Rename the function at 0x140001000 to "decrypt_config" and add a comment explaining it uses RC4.
+
+Find all cross-references to 0x14000A200 and summarize what calls it.
+
+NOP out the anti-debug check at 0x140002500 for 5 bytes.
+
+Calculate entropy of the .text section to check for packing.
 ```
 
-### Connecting with MCP Client (Advanced)
+### Programmatic (Python MCP client)
 
 ```python
 import asyncio
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamablehttp_client
+from mcp import ClientSession
 
 async def main():
-    # Connect to MCP server
-    server_params = StdioServerParameters(
-        command="python",
-        args=["mcp_server_stdio.py"]
-    )
-    
-    async with stdio_client(server_params) as (read, write):
+    async with streamablehttp_client("http://127.0.0.1:7337/mcp") as (read, write, _):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            
-            # List all registered IDA instances
-            result = await session.call_tool("ida_list_instances", {})
+
+            # Get pseudocode for main
+            result = await session.call_tool("get_pseudocode", {"function_name": "main"})
             print(result)
+
+            # Rename a function
+            await session.call_tool("rename_function", {
+                "address": "0x140001000",
+                "new_name": "decrypt_config"
+            })
 
 asyncio.run(main())
 ```
 
-### Example Tool Calls (Programmatic)
+## 🛠️ Available Tools (35)
 
-#### 1. Get Disassembly
-```python
-result = await session.call_tool("ida_get_disassembly", {
-    "instance_id": "ida_1",
-    "function_name": "main"
-})
-```
+### Disassembly & Decompilation
 
-#### 2. Get Pseudocode (Hex-Rays)
-```python
-result = await session.call_tool("ida_get_pseudocode", {
-    "instance_id": "ida_1",
-    "address": "0x401000"
-})
-```
+| Tool | Description |
+|------|-------------|
+| `get_disassembly` | Get assembly listing for a function (by name or address) |
+| `get_pseudocode` | Get Hex-Rays decompiled C pseudocode |
 
-#### 3. Rename Function
-```python
-result = await session.call_tool("ida_rename_function", {
-    "instance_id": "ida_1",
-    "address": "0x401000",
-    "new_name": "decrypt_config"
-})
-```
+### Function Analysis
 
-#### 4. Get All Imports
-```python
-result = await session.call_tool("ida_get_imports", {
-    "instance_id": "ida_1"
-})
-```
+| Tool | Description |
+|------|-------------|
+| `list_functions` | List all functions (configurable limit) |
+| `get_function_info` | Name, address, size, flags for a function |
+| `analyze_function` | Deep analysis: calls, callers, strings, constants |
+| `get_basic_blocks` | Control-flow graph basic blocks |
+| `get_function_chunks` | Non-contiguous function chunks |
+| `get_switch_cases` | Switch/jump table cases at an address |
+| `get_callgraph` | Callers and callees (configurable depth) |
+| `get_binary_info` | Binary metadata: arch, bitness, filename, MD5 |
 
-#### 5. Broadcast to All Instances
-```python
-# Get strings from ALL registered IDA instances
-result = await session.call_tool("ida_broadcast_tool", {
-    "tool_name": "get_strings",
-    "arguments": {
-        "min_length": 8
-    }
-})
-```
+### Cross-References & Names
 
-## 🛠️ Available Tools
+| Tool | Description |
+|------|-------------|
+| `get_xrefs` | XRefs to or from an address |
+| `get_imports` | All imported functions and their addresses |
+| `get_exports` | All exported symbols |
+| `get_strings` | Embedded strings (configurable min length) |
+| `search_names` | Search symbol names by substring |
 
-All tools can be used via:
-- **GitHub Copilot Chat** (natural language - see [COPILOT_SETUP.md](COPILOT_SETUP.md))
-- **Direct MCP calls** (programmatic - see examples above)
+### Memory Read
 
-### Instance Management
+| Tool | Description |
+|------|-------------|
+| `read_memory` | Read bytes / word / dword / qword / float / double / string |
+| `get_instruction_info` | Mnemonic, operands, and length at address |
+| `decode_instruction` | Full instruction decode (opcode, operands, references) |
 
-| Tool | Description | Copilot Example |
-|------|-------------|-----------------|
-| `ida_list_instances` | List all registered IDA instances | `@ida list instances` |
-| `ida_get_instance_info` | Get detailed info about an instance | `@ida get info for ida_1` |
+### Binary Patching
 
-### IDA Analysis Tools
+| Tool | Description |
+|------|-------------|
+| `write_memory` | Write byte / word / dword / qword / float / double / bytes |
+| `nop_range` | Fill a range with NOP instructions |
+| `revert_patch` | Revert patched bytes back to original |
+| `assemble_instruction` | Assemble an instruction string and write it |
+| `apply_patches_to_file` | Write all pending patches to a new output file |
 
-| Tool | Description | Copilot Example |
-|------|-------------|-----------------|
-| **Core Reverse Engineering** |
-| `ida_get_disassembly` | Get assembly code | `@ida get disassembly of main in ida_1` |
-| `ida_get_pseudocode` | Get decompiled code | `@ida show pseudocode for 0x401000 in ida_1` |
-| `ida_rename_function` | Rename a function | `@ida rename 0x401000 to decrypt_config in ida_1` |
-| `ida_set_comment` | Add comment at address | `@ida add comment "RC4 decryption" at 0x401000 in ida_1` |
-| `ida_get_function_info` | Get function details | `@ida analyze function main in ida_1` |
-| `ida_get_imports` | List all imports | `@ida show imports in ida_1` |
-| `ida_get_exports` | List all exports | `@ida show exports in ida_1` |
-| `ida_get_strings` | Extract strings | `@ida get strings from ida_1 with min length 8` |
-| `ida_get_xrefs_to` | Get references to address | `@ida show what calls 0x401000 in ida_1` |
-| `ida_get_xrefs_from` | Get references from address | `@ida show what 0x401000 calls in ida_1` |
-| `ida_list_functions` | List all functions | `@ida list first 50 functions in ida_1` |
-| `ida_get_function_at` | Get function at address | `@ida get function at 0x401000 in ida_1` |
-| `ida_analyze_function` | Deep function analysis | `@ida deep analyze main in ida_1` |
-| **Memory Operations** |
-| `ida_get_bytes` | Read raw bytes | `@ida read 32 bytes from 0x401000 in ida_1` |
-| `ida_get_dword_at` | Read 4-byte integer | `@ida get dword at 0x403000 in ida_1` |
-| `ida_get_qword_at` | Read 8-byte integer | `@ida get qword at 0x403000 in ida_1` |
-| `ida_get_word_at` | Read 2-byte integer | `@ida get word at 0x403000 in ida_1` |
-| `ida_get_byte_at` | Read 1-byte value | `@ida get byte at 0x403000 in ida_1` |
-| `ida_get_float_at` | Read float value | `@ida get float at 0x403000 in ida_1` |
-| `ida_get_double_at` | Read double value | `@ida get double at 0x403000 in ida_1` |
-| `ida_get_string_at` | Read string at address | `@ida get string at 0x403000 in ida_1` |
-| **Binary Analysis** |
-| `ida_get_entry_point` | Get program entry point | `@ida get entry point in ida_1` |
-| `ida_get_segments` | Get PE sections/segments | `@ida show segments in ida_1` |
-| `ida_get_instruction_length` | Get instruction size | `@ida get instruction length at 0x401000 in ida_1` |
-| **Function Manipulation** |
-| `ida_make_function` | Create function | `@ida make function at 0x401000 in ida_1` |
-| `ida_undefine_function` | Remove function | `@ida undefine function at 0x401000 in ida_1` |
-| `ida_get_current_file_path` | Get binary path | `@ida get file path in ida_1` |
-| **Batch Operations** |
-| `ida_broadcast_tool` | Execute on all instances | `@ida broadcast get_strings to all instances` |
+### Renaming & Annotations
 
-## 🎯 Real-World Use Cases
+| Tool | Description |
+|------|-------------|
+| `rename_function` | Rename a function by address or name |
+| `set_comment` | Set regular or repeatable comment at address |
+| `manage_function` | Create or undefine a function at address |
+| `get_local_variables` | List local variables for a function (Hex-Rays) |
+| `rename_local_variable` | Rename a local variable (Hex-Rays) |
 
-### Malware Analysis Campaign
-```
-Scenario: Analyzing multi-stage ransomware
-- Instance 1: Dropper executable
-- Instance 2: Unpacked payload DLL  
-- Instance 3: Configuration extractor
-- Instance 4: C2 communication module
+### Search
 
-Broadcast "get_strings" across all instances to correlate IOCs
-Execute targeted analysis on each component simultaneously
-```
+| Tool | Description |
+|------|-------------|
+| `search` | Search for byte pattern, text, or immediate value |
+| `find_immediate` | Find all uses of a specific immediate constant |
 
-### Firmware Analysis
-```
-Scenario: IoT device firmware with multiple binaries
-- Instance 1: Bootloader
-- Instance 2: Main firmware
-- Instance 3: Update mechanism
-- Instance 4: Crypto library
+### Type System & Symbols
 
-Parallel analysis of all components
-Cross-reference functions between binaries
-```
+| Tool | Description |
+|------|-------------|
+| `manage_type` | Get or set type information for an address |
+| `demangle_name` | Demangle a C++ mangled name |
 
-### Vulnerability Research
-```
-Scenario: Comparing patched vs unpatched binaries
-- Instance 1: Vulnerable version
-- Instance 2: Patched version
+### Debugger
 
-Side-by-side function comparison
-Diff analysis automation
+| Tool | Description |
+|------|-------------|
+| `manage_breakpoint` | Add, remove, enable, or disable a breakpoint |
+| `list_breakpoints` | List all current breakpoints |
+
+### Entropy
+
+| Tool | Description |
+|------|-------------|
+| `get_entropy` | Calculate Shannon entropy over a range |
+
+## 🔬 API Inspector Plugin
+
+`ida_api_inspector.py` is a companion research plugin that runs on **port 7338** and exposes 8 tools for exploring the IDA Python API from inside a live IDA session:
+
+| Tool | Description |
+|------|-------------|
+| `list_ida_modules` | Report which IDA Python modules are importable |
+| `inspect_module` | List all attributes of a module (functions, classes, constants) |
+| `search_api` | Cross-module substring search for attribute names |
+| `get_function_signature` | Full signature and docstring for a specific function |
+| `get_constants` | List integer constants in a module, optionally filtered by prefix |
+| `probe_function` | Safely call a read-only IDA function and return its result |
+| `compare_modules` | Diff two modules: shared vs unique attributes |
+| `ida_version_info` | IDA version, Python version, and loaded module list |
+
+Connect at:
+```json
+{ "url": "http://<HOST>:7338/mcp", "type": "http" }
 ```
 
 ## ⚙️ Configuration
 
-Edit `config.json` to customize behavior:
+### Default Ports
 
-```json
-{
-  "coordinator": {
-    "host": "localhost",
-    "port": 11337,
-    "log_level": "INFO"
-  },
-  "instances": {
-    "auto_register": true,
-    "heartbeat_interval": 30,
-    "port_range_start": 3000,
-    "port_range_end": 4000
-  },
-  "mcp": {
-    "transport": "sse",
-    "timeout": 30,
-    "max_retries": 3
-  }
-}
+| Plugin | Port | Purpose |
+|--------|------|---------|
+| `ida_plugin.py` | 7337 | Main RE tools |
+| `ida_api_inspector.py` | 7338 | API introspection |
+
+Both plugins scan for a free port starting from their default if the default is already in use.
+
+## 🔧 Installation
+
+Run the cross-platform Python installer (works on Windows, Linux, and macOS):
+
+```bash
+# Auto-detect IDA installation
+python install.py
+
+# Or specify IDA path manually
+python install.py --ida-path "C:\Program Files\IDA Pro 9.0"
+python install.py --ida-path /opt/idapro-9.0
 ```
 
-## 🔧 Advanced Usage
+The installer will:
+1. Verify Python 3.10+
+2. Install `mcp`, `uvicorn`, and `starlette` via pip
+3. Copy `ida_plugin.py` → `<IDA_DIR>/plugins/ida_mcp_plugin.py`
 
-### Manual Plugin Installation
-
-Copy `ida_plugin.py` to IDA's plugin directory:
-- **Windows**: `C:\Program Files\IDA Pro 9.0\plugins\`
-- **Linux**: `~/idapro-9.0/plugins/`
-- **macOS**: `/Applications/IDA Pro 9.0/ida64.app/Contents/plugins/`
-
-Rename to: `ida_mcp_plugin.py`
-
-### Custom Coordinator Port
-
-```python
-# Start coordinator on different port
-python mcp_coordinator.py --port 8888
-
-# Update plugin to connect to custom port
-# Edit ida_plugin.py: self.coordinator_url = "http://localhost:8888"
-```
-
-### Debugging
-
-Enable debug logging in coordinator:
-```python
-# In mcp_coordinator.py
-logging.basicConfig(level=logging.DEBUG)
-```
+If IDA is not found automatically, it prints the manual copy command.
 
 ## 🐛 Troubleshooting
 
 ### Plugin doesn't appear in IDA
-- Check plugin is in correct directory
+- Verify the file is in the correct plugins directory
 - Restart IDA Pro completely
-- Check IDA Python console for errors: `View → Open Subviews → Output Window`
+- Check `View → Open Subviews → Output Window` for Python errors
 
-### Can't connect to coordinator
-```bash
-# Check coordinator is running
-curl http://localhost:11337/instances
+### `Invalid Host header` error (remote connections)
+Both plugins set `host="0.0.0.0"` in FastMCP, which disables the localhost-only DNS rebinding protection. If you still see this:
+- Confirm you reloaded the plugin in IDA after saving changes
+- Check that your firewall allows inbound TCP on port 7337
 
-# Check firewall settings
-# Windows: Allow Python through firewall
-# Linux: Check iptables rules
+### Import errors / missing dependencies
+```powershell
+# Run inside IDA's Python environment
+C:\Path\To\IDA\python\python.exe -m pip install "mcp[cli]" uvicorn starlette
 ```
 
-### Import errors in IDA
-```python
-# Install dependencies in IDA's Python environment
-# Find IDA's Python:
-# Windows: C:\Program Files\IDA Pro 9.0\python\python.exe
-# Linux: ~/idapro-9.0/python/bin/python3
-
-# Install with:
-/path/to/ida/python -m pip install requests flask
-```
-
-### Instance not registering
-- Verify coordinator is running first
-- Check network connectivity: `ping localhost`
-- Verify port not in use: `netstat -an | findstr 11337`
-- Check IDA Output Window for error messages
-
-## 📊 Performance Tips
-
-1. **Limit string extraction**: Use `min_length` parameter to reduce memory
-2. **Batch operations**: Use `broadcast_tool` for parallel execution
-3. **Function limits**: Set `limit` parameter when listing functions
-4. **Cache results**: Coordinator maintains internal cache for recent queries
+### Port already in use
+Both plugins auto-scan for the next free port if the default is taken. Check the IDA Output Window for the actual port in use.
 
 ## 🔐 Security Considerations
 
-- **Local Network Only**: Coordinator binds to localhost by default
-- **No Authentication**: Trust model assumes local, single-user environment
-- **Malware Analysis**: Run in isolated VM/sandbox when analyzing malicious code
-- **Data Exposure**: All IDA instances can be queried by any MCP client
+- The server binds to `0.0.0.0` — it is reachable from any interface on your machine
+- No authentication is implemented — use only on trusted local/lab networks
+- When analyzing malware, run IDA in an isolated VM and restrict network access appropriately
+- Do not expose port 7337 to the public internet
 
 ## 🤝 Contributing
 
 Contributions welcome! Areas for improvement:
 - Additional analysis tools
-- Remote instance support with authentication
-- Result caching strategies
-- Performance optimizations
-- Integration with other reverse engineering tools
+- Authentication / token-based access control
+- Result caching
+- Integration with other RE frameworks (Binary Ninja, Ghidra, Radare2)
 
 ## 📄 License
 
@@ -484,16 +364,16 @@ Contributions welcome! Areas for improvement:
 Inspired by:
 - [jelasin/IDA-MCP](https://github.com/jelasin/IDA-MCP) - Multi-instance architecture
 - [mrexodia/ida-pro-mcp](https://github.com/mrexodia/ida-pro-mcp) - Comprehensive toolset
-- [taida957789/ida-mcp-server-plugin](https://github.com/taida957789/ida-mcp-server-plugin) - My personal Fav
+- [taida957789/ida-mcp-server-plugin](https://github.com/taida957789/ida-mcp-server-plugin) - Personal favourite
 - Model Context Protocol team at Anthropic
 
 ## 📞 Support
 
 - **Issues**: Report bugs via GitHub Issues
-- **Configs**: Check `configs/` folder for configurations
+- **Configs**: See [`Configs/`](Configs/) for ready-to-use client configuration files
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 3.0.0  
 **Author**: Jakkaraju Varshith  
-**Last Updated**: 2025-01-21
+**Last Updated**: 2026-04-22

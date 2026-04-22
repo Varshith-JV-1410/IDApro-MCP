@@ -1,3 +1,0 @@
-- run from main folder
-
-python server.py --transport streamable-http --host 127.0.0.1 --port 8100 --path /mcp --coordinator-url http://127.0.0.1:11337

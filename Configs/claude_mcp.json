@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "ida-pro": {
-      "command": "python",
-      "args": ["path\\to\\mcp_coordinator.py"]
+      "url": "http://127.0.0.1:7337/mcp",
+      "transport": "http"
     }
   }
 }

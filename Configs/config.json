@@ -1,24 +1,7 @@
 {
-  "coordinator": {
-    "host": "localhost",
-    "port": 11337,
-    "log_level": "INFO"
-  },
-  "instances": {
-    "auto_register": true,
-    "heartbeat_interval": 30,
-    "port_range_start": 3000,
-    "port_range_end": 4000
-  },
-  "mcp": {
-    "transport": "sse",
-    "timeout": 30,
-    "max_retries": 3
-  },
-  "features": {
-    "enable_caching": true,
-    "cache_ttl": 300,
-    "enable_metrics": true,
-    "enable_logging": true
+  "server": {
+    "host": "0.0.0.0",
+    "port": 7337,
+    "path": "/mcp"
   }
 }
