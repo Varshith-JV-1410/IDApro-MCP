@@ -15,8 +15,6 @@
 - **Direct HTTP Connection**: MCP clients connect straight to IDA — no proxy, no coordinator required
 - **Remote Access**: Bind to `0.0.0.0` for cross-machine use (VM guest → host, Mac → Windows, etc.)
 - **35 Analysis Tools**: Full coverage from disassembly to binary patching
-- **API Inspector**: Companion plugin (`ida_api_inspector.py`) for live IDA Python API introspection
-- **Companion Inspector**: `ida_api_inspector.py` runs alongside for live IDA Python API exploration
 
 ### Analysis Tools (35 Tools)
 - ✅ **Disassembly & Decompilation**: Assembly and Hex-Rays pseudocode extraction
@@ -85,8 +83,6 @@ Copy `ida_plugin.py` to IDA's plugin directory:
 | Windows | `C:\Program Files\IDA Pro 9.0\plugins\` |
 | Linux | `~/idapro-9.0/plugins/` |
 | macOS | `/Applications/IDA Pro 9.0/ida64.app/Contents/plugins/` |
-
-Optionally copy `ida_api_inspector.py` to the same directory to also get the API introspection server on port 7338.
 
 ### 2. Load a Binary in IDA Pro
 
@@ -268,26 +264,6 @@ asyncio.run(main())
 |------|-------------|
 | `get_entropy` | Calculate Shannon entropy over a range |
 
-## 🔬 API Inspector Plugin
-
-`ida_api_inspector.py` is a companion research plugin that runs on **port 7338** and exposes 8 tools for exploring the IDA Python API from inside a live IDA session:
-
-| Tool | Description |
-|------|-------------|
-| `list_ida_modules` | Report which IDA Python modules are importable |
-| `inspect_module` | List all attributes of a module (functions, classes, constants) |
-| `search_api` | Cross-module substring search for attribute names |
-| `get_function_signature` | Full signature and docstring for a specific function |
-| `get_constants` | List integer constants in a module, optionally filtered by prefix |
-| `probe_function` | Safely call a read-only IDA function and return its result |
-| `compare_modules` | Diff two modules: shared vs unique attributes |
-| `ida_version_info` | IDA version, Python version, and loaded module list |
-
-Connect at:
-```json
-{ "url": "http://<HOST>:7338/mcp", "type": "http" }
-```
-
 ## ⚙️ Configuration
 
 ### Default Ports
@@ -295,7 +271,6 @@ Connect at:
 | Plugin | Port | Purpose |
 |--------|------|---------|
 | `ida_plugin.py` | 7337 | Main RE tools |
-| `ida_api_inspector.py` | 7338 | API introspection |
 
 Both plugins scan for a free port starting from their default if the default is already in use.
 
